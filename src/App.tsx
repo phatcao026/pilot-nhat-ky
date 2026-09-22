@@ -14,6 +14,64 @@ const PROMPTS = [
   { emoji: "📝", text: "Viết như một trang nhật ký bạn vẫn thường viết" },
 ]
 
+export const CBT_ENERGY_STATES = [
+  {
+    id: "sad",
+    emoji: "🌧️",
+    label: "Nặng nề / Buồn bã",
+    desc: "Cảm giác chùng xuống, mệt mỏi hoặc mất mát",
+    questions: [
+      "Cảm giác này bắt đầu từ khoảnh khắc nào trong ngày?",
+      "Có điều gì bạn muốn nói ra với ai đó nhưng chưa thể nói không?",
+      "Điều gì đang khiến bạn cảm thấy trĩu nặng hoặc kiệt sức nhất lúc này?",
+    ],
+  },
+  {
+    id: "anxious",
+    emoji: "🌪️",
+    label: "Bồn chồn / Lo âu",
+    desc: "Tâm trí xáo động, bất an về những điều sắp tới",
+    questions: [
+      "Điều gì sắp diễn ra đang làm bạn thấy bất an nhất?",
+      "Cơ thể bạn lúc này có cảm giác gì không (như tim đập nhanh, nghẹn ở cổ)?",
+      "Kịch bản xấu nhất bạn đang tưởng tượng là gì?",
+    ],
+  },
+  {
+    id: "frustrated",
+    emoji: "🛑",
+    label: "Bực bội / Bất công",
+    desc: "Cảm giác nghẹn uất, khó chịu hoặc ranh giới bị xâm phạm",
+    questions: [
+      "Sự việc nào vừa xảy ra khiến bạn cảm thấy bị giới hạn hoặc không được tôn trọng?",
+      "Ý nghĩ hay phản ứng đầu tiên xuất hiện trong đầu bạn khi chuyện đó xảy ra là gì?",
+      "Nếu có thể thay đổi một điều ngay lúc đó, bạn muốn mọi chuyện diễn ra như thế nào?",
+    ],
+  },
+  {
+    id: "excited",
+    emoji: "⚡",
+    label: "Phấn khởi / Tự hào",
+    desc: "Cảm giác hào hứng, thỏa mãn và tràn đầy sinh lực",
+    questions: [
+      "Khoảnh khắc nào hôm nay khiến bạn cảm thấy tràn đầy năng lượng nhất?",
+      "Bạn đã nỗ lực hoặc làm được điều gì khiến bản thân mỉm cười hài lòng?",
+      "Bạn muốn lưu giữ lại cảm giác tích cực và sự biết ơn này như thế nào?",
+    ],
+  },
+  {
+    id: "empty",
+    emoji: "🍃",
+    label: "Trống rỗng / Bình lặng",
+    desc: "Khoảng lặng giữa dòng đời, không vui không buồn",
+    questions: [
+      "Khi tâm trí tĩnh lại, bạn đang chú ý đến những âm thanh hay cảm nhận gì xung quanh?",
+      "Cảm giác trống rỗng này cho bạn sự nghỉ ngơi hay có chút bơ vơ, lạc lõng?",
+      "Có điều gì bạn muốn cho phép mình buông lỏng và không cần phải gồng gánh tiếp hôm nay?",
+    ],
+  },
+]
+
 const CONTACTS = { email: "caotienphat0206@gmail.com", zalo: "0377740947" }
 
 function todayLabel() {
@@ -224,6 +282,8 @@ interface FormData {
   text: string
   selectedPrompt: number | null
   voiceFiles: File[]
+  voiceMoodId: string | null
+  voicePromptText: string | null
 }
 
 function PrimaryButton({
@@ -1020,6 +1080,8 @@ function PageVoice({
     }
   }, [])
 
+  const selectedCbtState = CBT_ENERGY_STATES.find((s) => s.id === data.voiceMoodId)
+
   return (
     <div>
       <SectionHead
@@ -1029,7 +1091,7 @@ function PageVoice({
 
       {/* ---- Lời nhắn từ nhóm nghiên cứu ---- */}
       <div
-        className="rounded-2xl p-4 sm:p-5 mb-5 text-left border text-xs sm:text-sm leading-relaxed"
+        className="rounded-2xl p-4 sm:p-5 mb-6 text-left border text-xs sm:text-sm leading-relaxed"
         style={{
           background: "var(--card)",
           borderColor: "var(--border)",
@@ -1061,6 +1123,151 @@ function PageVoice({
         </ul>
       </div>
 
+      {/* ---- BƯỚC 1: Chọn nhanh 1 chạm (5 trạng thái năng lượng) ---- */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-1.5">
+          <span
+            className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold"
+            style={{ background: "var(--accent)", color: "#fff" }}
+          >
+            1
+          </span>
+          <h3 className="text-sm font-semibold tracking-tight" style={{ color: "var(--foreground)" }}>
+            Bước 1: Trạng thái năng lượng hôm nay của bạn thế nào?
+          </h3>
+        </div>
+        <p className="text-xs mb-3.5" style={{ color: "var(--muted-foreground)" }}>
+          Chạm nhẹ vào 1 trạng thái để mở ra câu hỏi gợi ý phù hợp nhất:
+        </p>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
+          {CBT_ENERGY_STATES.map((state) => {
+            const isSelected = data.voiceMoodId === state.id
+            return (
+              <button
+                key={state.id}
+                type="button"
+                onClick={() => {
+                  if (isSelected) {
+                    onChange({ voiceMoodId: null, voicePromptText: null })
+                  } else {
+                    onChange({
+                      voiceMoodId: state.id,
+                      voicePromptText: state.questions[0],
+                    })
+                  }
+                }}
+                className="flex flex-col items-center justify-center p-3 sm:p-3.5 rounded-2xl border text-center transition-all duration-200 cursor-pointer active:scale-95 hover:border-[var(--accent)]"
+                style={{
+                  background: isSelected ? "var(--secondary)" : "var(--card)",
+                  borderColor: isSelected ? "var(--accent)" : "var(--border)",
+                  boxShadow: isSelected ? "0 0 0 1.5px var(--accent)" : "none",
+                }}
+              >
+                <span className="text-2xl sm:text-3xl mb-1.5">
+                  {state.emoji}
+                </span>
+                <span
+                  className="text-[12px] sm:text-[13px] font-medium leading-tight"
+                  style={{
+                    color: isSelected ? "var(--foreground)" : "var(--secondary-foreground)",
+                  }}
+                >
+                  {state.label}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      </div>
+
+      {/* ---- BƯỚC 2: Bung ra 3 câu hỏi đào sâu theo tâm lý học CBT ---- */}
+      {selectedCbtState && (
+        <div
+          className="mb-6 p-4 sm:p-5 rounded-2xl border transition-all duration-300"
+          style={{
+            background: "var(--card)",
+            borderColor: "var(--accent)",
+            boxShadow: "0 4px 20px -8px rgba(0,0,0,0.06)",
+          }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span
+                className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold"
+                style={{ background: "var(--accent)", color: "#fff" }}
+              >
+                2
+              </span>
+              <h3 className="text-sm font-semibold tracking-tight" style={{ color: "var(--foreground)" }}>
+                Bước 2: Chọn 1 câu hỏi gợi mở sâu sắc ({selectedCbtState.emoji} {selectedCbtState.label})
+              </h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => onChange({ voiceMoodId: null, voicePromptText: null })}
+              className="text-[11px] hover:underline cursor-pointer"
+              style={{ color: "var(--muted-foreground)" }}
+            >
+              Đổi trạng thái
+            </button>
+          </div>
+          <p className="text-xs mb-3" style={{ color: "var(--muted-foreground)" }}>
+            Chọn câu hỏi chạm đúng nhất vào cảm xúc lúc này để bắt đầu giãi bày:
+          </p>
+
+          <div className="space-y-2">
+            {selectedCbtState.questions.map((q, idx) => {
+              const isQSelected = data.voicePromptText === q
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => onChange({ voicePromptText: q })}
+                  className="w-full text-left p-3 sm:p-3.5 rounded-xl border transition-all duration-150 flex items-start gap-2.5 cursor-pointer active:scale-[0.99]"
+                  style={{
+                    background: isQSelected ? "var(--secondary)" : "var(--background)",
+                    borderColor: isQSelected ? "var(--accent)" : "var(--border)",
+                    boxShadow: isQSelected ? "0 0 0 1.2px var(--accent)" : "none",
+                  }}
+                >
+                  <span
+                    className="text-xs font-mono px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5 font-medium"
+                    style={{
+                      background: isQSelected ? "var(--accent)" : "var(--muted)",
+                      color: isQSelected ? "#fff" : "var(--muted-foreground)",
+                    }}
+                  >
+                    0{idx + 1}
+                  </span>
+                  <span
+                    className="text-[13px] sm:text-[13.5px] leading-relaxed flex-1"
+                    style={{
+                      color: isQSelected ? "var(--foreground)" : "var(--secondary-foreground)",
+                      fontWeight: isQSelected ? 500 : 400,
+                    }}
+                  >
+                    "{q}"
+                  </span>
+                  {isQSelected && (
+                    <span className="text-xs font-bold flex-shrink-0 mt-0.5" style={{ color: "var(--accent)" }}>
+                      ✓ Đã chọn
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          <p
+            className="text-[12px] mt-3.5 italic text-center font-medium"
+            style={{ color: "var(--accent)" }}
+          >
+            ✨ Đã chọn xong gợi ý! Giờ bạn chỉ cần bấm nút micro bên dưới và nói say sưa 1–3 phút nhé.
+          </p>
+        </div>
+      )}
+
       {/* ---- Live recorder ---- */}
       <div
         className="rounded-2xl p-7 mb-5 text-center transition-all"
@@ -1077,6 +1284,29 @@ function PageVoice({
         >
           Ghi âm trực tiếp (chuẩn 16kHz Mono WAV)
         </p>
+
+        {/* Banner câu hỏi đang tâm sự */}
+        {data.voicePromptText && (
+          <div
+            className="mb-5 p-3.5 sm:p-4 rounded-xl text-left border flex items-start gap-3"
+            style={{
+              background: "var(--secondary)",
+              borderColor: "var(--border)",
+            }}
+          >
+            <span className="text-2xl flex-shrink-0">
+              {selectedCbtState?.emoji || "🎙️"}
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>
+                Chủ đề bạn đang tâm sự:
+              </div>
+              <div className="text-[13.5px] font-medium leading-snug mt-1" style={{ color: "var(--foreground)" }}>
+                "{data.voicePromptText}"
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Cảnh báo trước khi hết 5 phút (ở mốc 4m30s = 270s) */}
         {recording && elapsed >= 270 && (
@@ -1273,7 +1503,7 @@ function PageVoice({
           Kéo thả file vào đây, hoặc nhấn để chọn
         </p>
         <p className="text-[12px] leading-relaxed max-w-md mx-auto" style={{ color: "var(--muted-foreground)" }}>
-          Hỗ trợ MP3, M4A, WAV, AAC, OGG — tối đa <strong>20 MB</strong> và thời lượng từ <strong>15s đến 5 phút</strong> (hệ thống tự động chuẩn hóa về WAV 16kHz Mono).
+          Hỗ trợ MP3, M4A, WAV, AAC, OGG — tối đa <strong>20 MB</strong> và thời lượng từ <strong>15s đến 5 phút</strong>.
         </p>
       </div>
 
@@ -1302,7 +1532,7 @@ function PageVoice({
         className="text-[12px] mt-5 italic"
         style={{ color: "var(--muted-foreground)" }}
       >
-        Bước này hoàn toàn tùy chọn, bạn có thể bấm "Tiếp theo" nếu chỉ muốn chia sẻ bằng văn bản.
+        Bước này hoàn toàn tùy chọn, bạn có thể bấm "Tiếp tục" nếu chỉ muốn chia sẻ bằng văn bản.
       </p>
 
       <NavRow onBack={onBack} onNext={onNext} />
@@ -1572,6 +1802,8 @@ export default function App() {
     text: "",
     selectedPrompt: null,
     voiceFiles: [],
+    voiceMoodId: null,
+    voicePromptText: null,
   })
   const update = (d: Partial<FormData>) =>
     setData((prev) => ({ ...prev, ...d }))
@@ -1588,10 +1820,19 @@ export default function App() {
     setSubmitError(null)
 
     try {
+      const activeCbtMood = CBT_ENERGY_STATES.find((s) => s.id === data.voiceMoodId)
+      const selectedPromptToSave = data.voicePromptText
+        ? {
+            emoji: activeCbtMood ? activeCbtMood.emoji : "🎙️",
+            text: data.voicePromptText,
+          }
+        : data.selectedPrompt !== null
+        ? PROMPTS[data.selectedPrompt]
+        : null
+
       await submitDiary({
         text: data.text,
-        selectedPrompt:
-          data.selectedPrompt !== null ? PROMPTS[data.selectedPrompt] : null,
+        selectedPrompt: selectedPromptToSave,
         promptIndex: data.selectedPrompt,
         mode: mode,
         voiceFiles: data.voiceFiles,
@@ -1614,7 +1855,13 @@ export default function App() {
   }
 
   const reset = () => {
-    setData({ text: "", selectedPrompt: null, voiceFiles: [] })
+    setData({
+      text: "",
+      selectedPrompt: null,
+      voiceFiles: [],
+      voiceMoodId: null,
+      voicePromptText: null,
+    })
     setSubmitError(null)
     go("intro")
   }
