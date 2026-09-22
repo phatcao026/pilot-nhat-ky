@@ -839,11 +839,13 @@ function VoiceFileItem({
 }
 
 function PageVoice({
+  mode,
   data,
   onChange,
   onNext,
   onBack,
 }: {
+  mode: Mode
   data: FormData
   onChange: (d: Partial<FormData>) => void
   onNext: () => void
@@ -1151,7 +1153,7 @@ function PageVoice({
               className="text-[11px] hover:underline cursor-pointer"
               style={{ color: "var(--muted-foreground)" }}
             >
-              Đổi trạng thái
+              Bỏ trạng thái
             </button>
           </div>
           <p className="text-xs mb-3" style={{ color: "var(--muted-foreground)" }}>
@@ -1205,7 +1207,7 @@ function PageVoice({
             className="text-[12px] mt-3.5 italic text-center font-medium"
             style={{ color: "var(--accent)" }}
           >
-            ✨ Đã chọn xong gợi ý! Giờ bạn chỉ cần bấm nút micro bên dưới và nói say sưa 1–3 phút nhé.
+            ✨ Đã chọn xong gợi ý! Giờ bạn chỉ cần bấm nút micro bên dưới và thoải mái chia sẻ bạn nhé.
           </p>
         </div>
       )}
@@ -1479,14 +1481,29 @@ function PageVoice({
         </div>
       )}
 
-      <p
-        className="text-[12px] mt-5 italic"
-        style={{ color: "var(--muted-foreground)" }}
-      >
-        Bước này hoàn toàn tùy chọn, bạn có thể bấm "Tiếp tục" nếu chỉ muốn chia sẻ bằng văn bản.
-      </p>
+      {mode === "voice" ? (
+        data.voiceFiles.length === 0 && (
+          <p
+            className="text-[12px] mt-5 italic"
+            style={{ color: "var(--muted-foreground)" }}
+          >
+            Vui lòng ghi âm hoặc tải lên ít nhất một bản ghi để tiếp tục bạn nhé.
+          </p>
+        )
+      ) : (
+        <p
+          className="text-[12px] mt-5 italic"
+          style={{ color: "var(--muted-foreground)" }}
+        >
+          Bước này hoàn toàn tùy chọn, bạn có thể bấm "Tiếp tục" nếu chỉ muốn chia sẻ bằng văn bản.
+        </p>
+      )}
 
-      <NavRow onBack={onBack} onNext={onNext} />
+      <NavRow
+        onBack={onBack}
+        onNext={onNext}
+        nextDisabled={mode === "voice" && data.voiceFiles.length === 0}
+      />
     </div>
   )
 }
@@ -1881,6 +1898,7 @@ export default function App() {
         )}
         {page === "voice" && (
           <PageVoice
+            mode={mode}
             data={data}
             onChange={update}
             onNext={() => go(stepAfter("voice"))}
