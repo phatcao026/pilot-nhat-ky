@@ -72,7 +72,10 @@ export const CBT_ENERGY_STATES = [
   },
 ]
 
-const CONTACTS = { email: "caotienphat0206@gmail.com", zalo: "0377740947" }
+const CONTACT_EMAILS = [
+  "work.phatcao026@gmail.com",
+  "tranvietlong.work@gmail.com",
+]
 
 function todayLabel() {
   return new Date().toLocaleDateString("vi-VN", {
@@ -1629,16 +1632,17 @@ function PageContact({
 
 /* ---------- Đóng góp thêm nhật ký cũ ---------- */
 function SupportCard() {
-  const [copiedEmail, setCopiedEmail] = useState(false)
-  const copyEmail = useCallback(() => {
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null)
+
+  const copyEmail = (email: string, index: number) => {
     navigator.clipboard
-      ?.writeText(CONTACTS.email)
+      ?.writeText(email)
       .then(() => {
-        setCopiedEmail(true)
-        setTimeout(() => setCopiedEmail(false), 1600)
+        setCopiedIndex(index)
+        setTimeout(() => setCopiedIndex(null), 1600)
       })
       .catch(() => {})
-  }, [])
+  }
 
   return (
     <section
@@ -1670,65 +1674,39 @@ function SupportCard() {
           borderColor: "var(--border)",
         }}
       >
-        {/* Dòng Email */}
-        <div className="py-3.5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="text-base flex-shrink-0">✉️</span>
-            <span
-              className="font-medium text-[14px]"
-              style={{ color: "var(--foreground)" }}
-            >
-              Email:
-            </span>
-            <span
-              className="text-[14px] break-all"
-              style={{ color: "var(--secondary-foreground)" }}
-            >
-              {CONTACTS.email}
-            </span>
-          </div>
-          <button
-            onClick={copyEmail}
-            className="text-[12px] px-3.5 py-1.5 rounded-full transition-all hover:opacity-85 active:scale-95 cursor-pointer font-medium flex-shrink-0 ml-auto sm:ml-0"
-            style={{
-              border: "1px solid var(--border)",
-              color: "var(--secondary-foreground)",
-            }}
+        {CONTACT_EMAILS.map((email, idx) => (
+          <div
+            key={idx}
+            className="py-3.5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3"
           >
-            {copiedEmail ? "✓ Đã sao chép" : "Sao chép"}
-          </button>
-        </div>
-
-        {/* Dòng Zalo */}
-        <div className="py-3.5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <span className="text-base flex-shrink-0">💬</span>
-            <span
-              className="font-medium text-[14px]"
-              style={{ color: "var(--foreground)" }}
+            <div className="flex items-center gap-2.5 min-w-0">
+              <span className="text-base flex-shrink-0">✉️</span>
+              <span
+                className="font-medium text-[14px]"
+                style={{ color: "var(--foreground)" }}
+              >
+                Email:
+              </span>
+              <span
+                className="text-[14px] break-all"
+                style={{ color: "var(--secondary-foreground)" }}
+              >
+                {email}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => copyEmail(email, idx)}
+              className="text-[12px] px-3.5 py-1.5 rounded-full transition-all hover:opacity-85 active:scale-95 cursor-pointer font-medium flex-shrink-0 ml-auto sm:ml-0"
+              style={{
+                border: "1px solid var(--border)",
+                color: "var(--secondary-foreground)",
+              }}
             >
-              Zalo:
-            </span>
-            <span
-              className="text-[14px]"
-              style={{ color: "var(--secondary-foreground)" }}
-            >
-              {CONTACTS.zalo}
-            </span>
+              {copiedIndex === idx ? "✓ Đã sao chép" : "Sao chép"}
+            </button>
           </div>
-          <a
-            href={`https://zalo.me/${CONTACTS.zalo}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[12px] px-4 py-1.5 rounded-full transition-all hover:opacity-90 active:scale-95 inline-flex items-center justify-center font-medium cursor-pointer flex-shrink-0 ml-auto sm:ml-0"
-            style={{
-              background: "var(--primary)",
-              color: "var(--primary-foreground)",
-            }}
-          >
-            Mở Zalo
-          </a>
-        </div>
+        ))}
       </div>
 
       <p
