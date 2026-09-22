@@ -18,6 +18,7 @@ export const CBT_ENERGY_STATES = [
   {
     id: "sad",
     label: "Nặng nề / Buồn bã",
+    lines: ["Nặng nề /", "Buồn bã"],
     desc: "Cảm giác chùng xuống, mệt mỏi hoặc mất mát",
     questions: [
       "Cảm giác này bắt đầu từ khoảnh khắc nào trong ngày?",
@@ -28,6 +29,7 @@ export const CBT_ENERGY_STATES = [
   {
     id: "anxious",
     label: "Bồn chồn / Lo âu",
+    lines: ["Bồn chồn /", "Lo âu"],
     desc: "Tâm trí xáo động, bất an về những điều sắp tới",
     questions: [
       "Điều gì sắp diễn ra đang làm bạn thấy bất an nhất?",
@@ -38,6 +40,7 @@ export const CBT_ENERGY_STATES = [
   {
     id: "frustrated",
     label: "Bực bội / Bất công",
+    lines: ["Bực bội /", "Bất công"],
     desc: "Cảm giác nghẹn uất, khó chịu hoặc ranh giới bị xâm phạm",
     questions: [
       "Sự việc nào vừa xảy ra khiến bạn cảm thấy bị giới hạn hoặc không được tôn trọng?",
@@ -48,6 +51,7 @@ export const CBT_ENERGY_STATES = [
   {
     id: "excited",
     label: "Phấn khởi / Tự hào",
+    lines: ["Phấn khởi /", "Tự hào"],
     desc: "Cảm giác hào hứng, thỏa mãn và tràn đầy sinh lực",
     questions: [
       "Khoảnh khắc nào hôm nay khiến bạn cảm thấy tràn đầy năng lượng nhất?",
@@ -58,6 +62,7 @@ export const CBT_ENERGY_STATES = [
   {
     id: "empty",
     label: "Trống rỗng / Bình lặng",
+    lines: ["Trống rỗng /", "Bình lặng"],
     desc: "Khoảng lặng giữa dòng đời, không vui không buồn",
     questions: [
       "Khi tâm trí tĩnh lại, bạn đang chú ý đến những âm thanh hay cảm nhận gì xung quanh?",
@@ -1124,7 +1129,7 @@ function PageVoice({
                     })
                   }
                 }}
-                className="flex items-center justify-center p-3 sm:py-3.5 sm:px-3 rounded-2xl border text-center transition-all duration-200 cursor-pointer active:scale-95 hover:border-[var(--accent)] last:col-span-2 sm:last:col-span-1"
+                className="flex flex-col items-center justify-center py-3.5 px-2.5 sm:px-3 rounded-2xl border text-center transition-all duration-200 cursor-pointer active:scale-95 hover:border-[var(--accent)] last:col-span-2 sm:last:col-span-1 min-h-[68px]"
                 style={{
                   background: isSelected ? "var(--secondary)" : "var(--card)",
                   borderColor: isSelected ? "var(--accent)" : "var(--border)",
@@ -1132,12 +1137,20 @@ function PageVoice({
                 }}
               >
                 <span
-                  className="text-[13px] sm:text-[13.5px] font-medium leading-snug text-center"
+                  className="text-[13px] sm:text-[13.5px] font-medium leading-tight text-center block"
                   style={{
                     color: isSelected ? "var(--foreground)" : "var(--secondary-foreground)",
                   }}
                 >
-                  {state.label}
+                  {state.lines[0]}
+                </span>
+                <span
+                  className="text-[13px] sm:text-[13.5px] font-medium leading-tight text-center block mt-1"
+                  style={{
+                    color: isSelected ? "var(--foreground)" : "var(--secondary-foreground)",
+                  }}
+                >
+                  {state.lines[1]}
                 </span>
               </button>
             )
