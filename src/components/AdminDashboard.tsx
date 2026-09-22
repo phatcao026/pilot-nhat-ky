@@ -7,7 +7,13 @@ import {
   query,
   orderBy,
 } from "firebase/firestore"
-import { db } from "../lib/firebase"
+import {
+  signInWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  type User,
+} from "firebase/auth"
+import { db, auth } from "../lib/firebase"
 
 interface AudioFile {
   name: string
@@ -31,15 +37,17 @@ interface DiaryItem {
   platform?: string
 }
 
-const ADMIN_PIN = "123456"
 const TARGET_GOAL = 5000
 
 export default function AdminDashboard({ onExit }: { onExit: () => void }) {
-  const [authed, setAuthed] = useState<boolean>(() => {
-    return sessionStorage.getItem("uit_admin_logged_in") === "true"
-  })
-  const [pin, setPin] = useState("")
-  const [pinError, setPinError] = useState("")
+  const [currentUser, setCurrentUser] = useState<User | null>(() => auth?.currentUser || null)
+  const [authed, setAuthed] = useState<boolean>(false)
+  const [authChecking, setAuthChecking] = useState<boolean>(true)
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [authError, setAuthError] = useState("")
+  const [authSubmitting, setAuthSubmitting] = useState(false)
+
   const [diaries, setDiaries] = useState<DiaryItem[]>([])
   const [loading, setLoading] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
@@ -49,21 +57,63 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [expandedIds, setExpandedIds] = useState<Record<string, boolean>>({})
 
-  // Xử lý đăng nhập PIN
-  const handleLogin = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (!auth) {
+      setAuthChecking(false)
+      return
+    }
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setCurrentUser(user)
+      setAuthed(!!user)
+      setAuthChecking(false)
+    })
+    return () => unsubscribe()
+  }, [])
+
+  // Xử lý đăng nhập qua Firebase Authentication
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (pin === ADMIN_PIN) {
-      setAuthed(true)
-      sessionStorage.setItem("uit_admin_logged_in", "true")
-      setPinError("")
-    } else {
-      setPinError("Mã PIN không đúng. Vui lòng thử lại!")
+    setAuthError("")
+    if (!auth) {
+      setAuthError("Firebase Auth chưa được kích hoạt. Vui lòng kiểm tra file cấu hình .env.")
+      return
+    }
+    if (!email.trim() || !password) {
+      setAuthError("Vui lòng điền đầy đủ Email và Mật khẩu.")
+      return
+    }
+
+    setAuthSubmitting(true)
+    try {
+      await signInWithEmailAndPassword(auth, email.trim(), password)
+      setEmail("")
+      setPassword("")
+    } catch (err: any) {
+      console.error("Lỗi đăng nhập Admin:", err)
+      if (
+        err?.code === "auth/invalid-credential" ||
+        err?.code === "auth/wrong-password" ||
+        err?.code === "auth/user-not-found"
+      ) {
+        setAuthError("Email hoặc mật khẩu không chính xác. Vui lòng kiểm tra lại!")
+      } else if (err?.code === "auth/operation-not-allowed") {
+        setAuthError("Phương thức Email/Password chưa được kích hoạt trong Firebase Console -> Authentication -> Sign-in method.")
+      } else if (err?.code === "auth/too-many-requests") {
+        setAuthError("Đã thử đăng nhập sai quá nhiều lần. Vui lòng đợi vài phút rồi thử lại!")
+      } else {
+        setAuthError(err?.message || "Đăng nhập thất bại. Vui lòng thử lại!")
+      }
+    } finally {
+      setAuthSubmitting(false)
     }
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    if (auth) {
+      await signOut(auth).catch(() => {})
+    }
     setAuthed(false)
-    sessionStorage.removeItem("uit_admin_logged_in")
+    setCurrentUser(null)
   }
 
   // Tải dữ liệu từ Firestore
@@ -236,7 +286,21 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
     URL.revokeObjectURL(url)
   }
 
-  // Màn hình nhập PIN
+  // Màn hình kiểm tra phiên hoặc đăng nhập Firebase Auth
+  if (authChecking) {
+    return (
+      <div
+        className="min-h-screen flex items-center justify-center px-4"
+        style={{ background: "var(--background)" }}
+      >
+        <div className="flex items-center gap-3 text-sm" style={{ color: "var(--muted-foreground)" }}>
+          <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+          <span>Đang kiểm tra quyền quản trị...</span>
+        </div>
+      </div>
+    )
+  }
+
   if (!authed) {
     return (
       <div
@@ -244,7 +308,7 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
         style={{ background: "var(--background)" }}
       >
         <div
-          className="max-w-md w-full rounded-2xl p-8 text-center shadow-lg"
+          className="max-w-md w-full rounded-2xl p-7 sm:p-8 text-center shadow-lg"
           style={{ background: "var(--card)", border: "1px solid var(--border)" }}
         >
           <div
@@ -254,54 +318,86 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
             🔐
           </div>
           <h2
-            className="font-display text-2xl font-medium mb-2"
+            className="font-display text-2xl font-medium mb-1.5"
             style={{ color: "var(--foreground)" }}
           >
             Quản trị viên Đề tài UIT
           </h2>
           <p
-            className="text-sm mb-6 leading-relaxed"
+            className="text-xs sm:text-sm mb-6 leading-relaxed"
             style={{ color: "var(--muted-foreground)" }}
           >
-            Khu vực dành riêng cho nhóm nghiên cứu để theo dõi dữ liệu và nghe các đoạn nhật ký âm thanh.
+            Xác thực an toàn qua Google Firebase Auth. Chỉ tài khoản nghiên cứu được cấp phép mới có quyền truy cập.
           </p>
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4 text-left">
             <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--secondary-foreground)" }}>
+                Email quản trị viên
+              </label>
               <input
-                type="password"
-                maxLength={10}
-                value={pin}
-                onChange={(e) => setPin(e.target.value)}
-                placeholder="Nhập mã PIN quản trị..."
-                className="w-full px-4 py-3 rounded-xl text-center text-lg tracking-widest outline-none transition-all"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="admin@uit.edu.vn"
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-all"
                 style={{
                   background: "var(--background)",
                   border: "1px solid var(--border)",
                   color: "var(--foreground)",
                 }}
                 autoFocus
+                required
               />
-              {pinError && (
-                <p className="text-red-500 text-xs mt-2 text-left">{pinError}</p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--secondary-foreground)" }}>
+                Mật khẩu
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="w-full px-3.5 py-2.5 rounded-xl text-sm outline-none transition-all"
+                style={{
+                  background: "var(--background)",
+                  border: "1px solid var(--border)",
+                  color: "var(--foreground)",
+                }}
+                required
+              />
+              {authError && (
+                <div
+                  className="p-3 rounded-xl text-xs mt-2.5 leading-relaxed"
+                  style={{
+                    background: "rgba(239, 68, 68, 0.1)",
+                    color: "#dc2626",
+                    border: "1px solid rgba(239, 68, 68, 0.2)",
+                  }}
+                >
+                  {authError}
+                </div>
               )}
             </div>
 
             <button
               type="submit"
-              className="w-full py-3 rounded-xl text-sm font-medium tracking-wide transition-all hover:opacity-90 cursor-pointer"
+              disabled={authSubmitting}
+              className="w-full py-3 rounded-xl text-sm font-medium tracking-wide transition-all hover:opacity-90 cursor-pointer disabled:opacity-50 mt-1"
               style={{
                 background: "var(--primary)",
                 color: "var(--primary-foreground)",
               }}
             >
-              Mở bảng điều khiển
+              {authSubmitting ? "Đang xác thực bảo mật..." : "Đăng nhập Quản trị"}
             </button>
           </form>
 
           <button
             onClick={onExit}
-            className="mt-6 text-xs transition-opacity hover:opacity-70"
+            className="mt-6 text-xs transition-opacity hover:opacity-70 cursor-pointer"
             style={{ color: "var(--muted-foreground)" }}
           >
             ← Quay lại trang chủ viết nhật ký
@@ -370,6 +466,18 @@ export default function AdminDashboard({ onExit }: { onExit: () => void }) {
             >
               🔄
             </button>
+            {currentUser?.email && (
+              <span
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium border"
+                style={{
+                  border: "1px solid var(--border)",
+                  color: "var(--muted-foreground)",
+                  background: "var(--card)",
+                }}
+              >
+                👤 {currentUser.email}
+              </span>
+            )}
             <button
               onClick={onExit}
               className="px-3 py-2 rounded-xl text-xs border transition-all hover:opacity-80 cursor-pointer"
