@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react"
-import uitDiaryLogo from "./imports/Logo_UIT_RutGon_Transparent.png"
+import uitDiaryLogo from "./imports/uit-diary.jpg"
 import { submitDiary } from "./lib/diaryService"
 import { WavRecorder, convertUploadedFileToWav16kMono } from "./lib/audioProcessor"
 import AdminDashboard from "./components/AdminDashboard"
@@ -462,13 +462,13 @@ function PageIntro({
       >
         <div className="flex items-start gap-3 mb-5">
           <div
-            className="w-9 h-9 rounded-lg flex-shrink-0 flex items-center justify-center p-1"
+            className="w-10 h-10 rounded-xl flex-shrink-0 flex items-center justify-center p-0.5 overflow-hidden"
             style={{ border: "1px solid var(--border)", background: "#fff" }}
           >
             <img
               src={uitDiaryLogo}
-              alt="Logo UIT"
-              className="w-full h-full object-contain"
+              alt="Nhật ký cảm xúc UIT"
+              className="w-full h-full object-cover rounded-lg"
             />
           </div>
           <div>
