@@ -17,7 +17,6 @@ const PROMPTS = [
 export const CBT_ENERGY_STATES = [
   {
     id: "sad",
-    emoji: "🌧️",
     label: "Nặng nề / Buồn bã",
     desc: "Cảm giác chùng xuống, mệt mỏi hoặc mất mát",
     questions: [
@@ -28,7 +27,6 @@ export const CBT_ENERGY_STATES = [
   },
   {
     id: "anxious",
-    emoji: "🌪️",
     label: "Bồn chồn / Lo âu",
     desc: "Tâm trí xáo động, bất an về những điều sắp tới",
     questions: [
@@ -39,7 +37,6 @@ export const CBT_ENERGY_STATES = [
   },
   {
     id: "frustrated",
-    emoji: "🛑",
     label: "Bực bội / Bất công",
     desc: "Cảm giác nghẹn uất, khó chịu hoặc ranh giới bị xâm phạm",
     questions: [
@@ -50,7 +47,6 @@ export const CBT_ENERGY_STATES = [
   },
   {
     id: "excited",
-    emoji: "⚡",
     label: "Phấn khởi / Tự hào",
     desc: "Cảm giác hào hứng, thỏa mãn và tràn đầy sinh lực",
     questions: [
@@ -61,7 +57,6 @@ export const CBT_ENERGY_STATES = [
   },
   {
     id: "empty",
-    emoji: "🍃",
     label: "Trống rỗng / Bình lặng",
     desc: "Khoảng lặng giữa dòng đời, không vui không buồn",
     questions: [
@@ -1115,18 +1110,15 @@ function PageVoice({
                     })
                   }
                 }}
-                className="flex flex-col items-center justify-center p-3 sm:p-3.5 rounded-2xl border text-center transition-all duration-200 cursor-pointer active:scale-95 hover:border-[var(--accent)]"
+                className="flex items-center justify-center p-3 sm:py-3.5 sm:px-3 rounded-2xl border text-center transition-all duration-200 cursor-pointer active:scale-95 hover:border-[var(--accent)] last:col-span-2 sm:last:col-span-1"
                 style={{
                   background: isSelected ? "var(--secondary)" : "var(--card)",
                   borderColor: isSelected ? "var(--accent)" : "var(--border)",
                   boxShadow: isSelected ? "0 0 0 1.5px var(--accent)" : "none",
                 }}
               >
-                <span className="text-2xl sm:text-3xl mb-1.5">
-                  {state.emoji}
-                </span>
                 <span
-                  className="text-[12px] sm:text-[13px] font-medium leading-tight"
+                  className="text-[13px] sm:text-[13.5px] font-medium leading-snug text-center"
                   style={{
                     color: isSelected ? "var(--foreground)" : "var(--secondary-foreground)",
                   }}
@@ -1151,7 +1143,7 @@ function PageVoice({
         >
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold tracking-tight" style={{ color: "var(--foreground)" }}>
-              Chọn 1 câu hỏi gợi mở sâu sắc ({selectedCbtState.emoji} {selectedCbtState.label})
+              Chọn 1 câu hỏi gợi mở sâu sắc ({selectedCbtState.label})
             </h3>
             <button
               type="button"
@@ -1238,22 +1230,31 @@ function PageVoice({
         {/* Banner câu hỏi đang tâm sự */}
         {data.voicePromptText && (
           <div
-            className="mb-5 p-3.5 sm:p-4 rounded-xl text-left border flex items-start gap-3"
+            className="mb-5 p-3.5 sm:p-4 rounded-xl text-left border"
             style={{
               background: "var(--secondary)",
               borderColor: "var(--border)",
             }}
           >
-            <span className="text-2xl flex-shrink-0">
-              {selectedCbtState?.emoji || "🎙️"}
-            </span>
-            <div className="flex-1 min-w-0">
-              <div className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>
+            <div className="flex items-center justify-between gap-2 mb-1">
+              <span className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--accent)" }}>
                 Chủ đề bạn đang tâm sự:
-              </div>
-              <div className="text-[13.5px] font-medium leading-snug mt-1" style={{ color: "var(--foreground)" }}>
-                "{data.voicePromptText}"
-              </div>
+              </span>
+              {selectedCbtState && (
+                <span
+                  className="text-[11px] px-2 py-0.5 rounded-md font-medium"
+                  style={{
+                    background: "var(--card)",
+                    color: "var(--muted-foreground)",
+                    border: "1px solid var(--border)",
+                  }}
+                >
+                  {selectedCbtState.label}
+                </span>
+              )}
+            </div>
+            <div className="text-[13.5px] font-medium leading-snug" style={{ color: "var(--foreground)" }}>
+              "{data.voicePromptText}"
             </div>
           </div>
         )}
@@ -1770,10 +1771,9 @@ export default function App() {
     setSubmitError(null)
 
     try {
-      const activeCbtMood = CBT_ENERGY_STATES.find((s) => s.id === data.voiceMoodId)
       const selectedPromptToSave = data.voicePromptText
         ? {
-            emoji: activeCbtMood ? activeCbtMood.emoji : "🎙️",
+            emoji: "",
             text: data.voicePromptText,
           }
         : data.selectedPrompt !== null
