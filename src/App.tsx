@@ -1605,10 +1605,10 @@ function PageContact({
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 ></path>
               </svg>
-              Đang gửi dữ liệu ẩn danh...
+              Đang gửi đi...
             </span>
           ) : (
-            "Gửi tâm tư ẩn danh"
+            "Gửi đi"
           )}
         </PrimaryButton>
       </section>
@@ -1716,6 +1716,56 @@ function SupportCard() {
   )
 }
 
+function SuccessAnimation() {
+  const [phase, setPhase] = useState<"spinning" | "checked">("spinning")
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPhase("checked")
+    }, 750)
+    return () => clearTimeout(timer)
+  }, [])
+
+  return (
+    <div className="flex items-center justify-center mb-6">
+      <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center">
+        {phase === "spinning" ? (
+          <div
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full border-[3px] animate-spin"
+            style={{
+              borderColor: "var(--accent)",
+              borderTopColor: "transparent",
+            }}
+          />
+        ) : (
+          <div
+            className="animate-checkmark-pop flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-full shadow-sm"
+            style={{
+              background: "rgba(16, 185, 129, 0.12)",
+              border: "1.5px solid rgba(16, 185, 129, 0.4)",
+            }}
+          >
+            <svg
+              className="w-7 h-7 sm:w-8 sm:h-8"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="#059669"
+              strokeWidth={3}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline
+                points="20 6 9 17 4 12"
+                className="animate-checkmark-draw"
+              />
+            </svg>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 /* ---------- Thank you ---------- */
 function ThankYou({ onAgain }: { onAgain: () => void }) {
   return (
@@ -1725,6 +1775,7 @@ function ThankYou({ onAgain }: { onAgain: () => void }) {
     >
       <div className="max-w-xl mx-auto">
         <div className="text-center">
+          <SuccessAnimation />
           <h1
             className="font-display mb-4"
             style={{
