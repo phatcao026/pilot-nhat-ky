@@ -216,7 +216,7 @@ export class WavRecorder {
  * Xử lý file âm thanh tải lên (MP3, M4A, WAV, AAC...):
  * 1. Kiểm tra dung lượng <= 20MB
  * 2. Giải mã âm thanh trong RAM
- * 3. Kiểm tra thời lượng 15s - 300s
+ * 3. Kiểm tra thời lượng dưới 300s (5 phút)
  * 4. Chuyển đổi và nội suy hạ tần số về đúng 16.000 Hz Mono
  * 5. Xuất ra File .wav chuẩn PCM 16-bit
  */
@@ -243,16 +243,16 @@ export async function convertUploadedFileToWav16kMono(
     const arrayBuffer = await file.arrayBuffer()
     const decodedBuffer = await audioCtx.decodeAudioData(arrayBuffer)
 
-    // 3. Kiểm tra thời lượng 15s - 300s (5 phút)
+    // 3. Kiểm tra thời lượng dưới 5 phút (300 giây)
     const duration = decodedBuffer.duration
-    if (duration < 15) {
+    if (duration <= 0) {
       throw new Error(
-        `File "${file.name}" quá ngắn (${Math.round(duration)} giây). Thời lượng tối thiểu cần ít nhất 15 giây.`
+        `File "${file.name}" không có dữ liệu âm thanh hợp lệ.`
       )
     }
     if (duration > 300) {
       throw new Error(
-        `File "${file.name}" dài quá 5 phút (${Math.round(duration / 60)} phút ${Math.round(duration % 60)} giây). Thời lượng tối đa cho phép là 5 phút (300 giây).`
+        `File "${file.name}" dài quá 5 phút (${Math.round(duration / 60)} phút ${Math.round(duration % 60)} giây). Thời lượng tối đa cho phép là dưới 5 phút (300 giây).`
       )
     }
 

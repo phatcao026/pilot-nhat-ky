@@ -921,16 +921,13 @@ function PageVoice({
       return
     }
 
-    // Min duration check: 15 seconds
-    if (seconds < 15) {
+    // Bỏ giới hạn tối thiểu, chỉ hủy nếu bấm dừng tức thì (< 1 giây)
+    if (seconds < 1) {
       recorder.cancel()
       wavRecorderRef.current = null
       setRecording(false)
       setPaused(false)
       setElapsed(0)
-      setRecError(
-        "Bản ghi âm hơi ngắn (dưới 15 giây). Bạn hãy mở lòng tâm sự thêm một chút (tối thiểu 15 giây) để mô hình nghiên cứu có đủ dữ liệu nhận diện nhé!"
-      )
       return
     }
 
@@ -1484,7 +1481,7 @@ function PageVoice({
           Kéo thả file vào đây, hoặc nhấn để chọn
         </p>
         <p className="text-[12px] leading-relaxed max-w-md mx-auto" style={{ color: "var(--muted-foreground)" }}>
-          Hỗ trợ MP3, M4A, WAV, AAC, OGG — tối đa <strong>20 MB</strong> và thời lượng từ <strong>15s đến 5 phút</strong>.
+          Hỗ trợ MP3, M4A, WAV, AAC, OGG — tối đa <strong>20 MB</strong> và thời lượng <strong>dưới 5 phút</strong>.
         </p>
       </div>
 
