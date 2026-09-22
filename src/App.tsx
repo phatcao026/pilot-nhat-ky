@@ -1089,53 +1089,11 @@ function PageVoice({
         sub="Đôi khi giọng nói mang theo những cảm xúc mà con chữ khó lòng diễn tả hết. Bạn có thể ghi âm trực tiếp ngay tại đây, hoặc tải lên file có sẵn, hoàn toàn tùy bạn."
       />
 
-      {/* ---- Lời nhắn từ nhóm nghiên cứu ---- */}
-      <div
-        className="rounded-2xl p-4 sm:p-5 mb-6 text-left border text-xs sm:text-sm leading-relaxed"
-        style={{
-          background: "var(--card)",
-          borderColor: "var(--border)",
-        }}
-      >
-        <div
-          className="flex items-center gap-2 mb-2 font-medium"
-          style={{ color: "var(--accent)" }}
-        >
-          <span>🌿</span>
-          <span>Một chút nhắn nhủ từ nhóm nghiên cứu:</span>
-        </div>
-        <p style={{ color: "var(--secondary-foreground)" }}>
-          Để tiếng thở dài, sự ngắt nghỉ và cảm xúc tự nhiên được bảo tồn chân thực nhất cho mô hình AI:
-        </p>
-        <ul
-          className="mt-2 space-y-1.5 list-disc list-inside text-[12px] sm:text-[13px]"
-          style={{ color: "var(--muted-foreground)" }}
-        >
-          <li>
-            Hãy cố gắng ghi âm trong <strong>không gian yên tĩnh</strong> (tránh tiếng tivi, nhạc nền hay người nói xung quanh).
-          </li>
-          <li>
-            Giữ micro cách miệng khoảng <strong>1 gang tay (15 – 30cm)</strong> để giọng nói rõ và không bị vỡ âm.
-          </li>
-          <li>
-            Thời lượng tối ưu từ <strong>1 – 3 phút</strong> (tối thiểu 15 giây, tối đa 5 phút).
-          </li>
-        </ul>
-      </div>
-
-      {/* ---- BƯỚC 1: Chọn nhanh 1 chạm (5 trạng thái năng lượng) ---- */}
+      {/* ---- Chọn trạng thái năng lượng ---- */}
       <div className="mb-6">
-        <div className="flex items-center gap-2 mb-1.5">
-          <span
-            className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold"
-            style={{ background: "var(--accent)", color: "#fff" }}
-          >
-            1
-          </span>
-          <h3 className="text-sm font-semibold tracking-tight" style={{ color: "var(--foreground)" }}>
-            Bước 1: Trạng thái năng lượng hôm nay của bạn thế nào?
-          </h3>
-        </div>
+        <h3 className="text-sm font-semibold tracking-tight mb-1" style={{ color: "var(--foreground)" }}>
+          Trạng thái năng lượng hôm nay của bạn thế nào?
+        </h3>
         <p className="text-xs mb-3.5" style={{ color: "var(--muted-foreground)" }}>
           Chạm nhẹ vào 1 trạng thái để mở ra câu hỏi gợi ý phù hợp nhất:
         </p>
@@ -1181,7 +1139,7 @@ function PageVoice({
         </div>
       </div>
 
-      {/* ---- BƯỚC 2: Bung ra 3 câu hỏi đào sâu theo tâm lý học CBT ---- */}
+      {/* ---- Câu hỏi đào sâu theo tâm lý học CBT ---- */}
       {selectedCbtState && (
         <div
           className="mb-6 p-4 sm:p-5 rounded-2xl border transition-all duration-300"
@@ -1192,17 +1150,9 @@ function PageVoice({
           }}
         >
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-2">
-              <span
-                className="w-5 h-5 rounded-full flex items-center justify-center text-[11px] font-bold"
-                style={{ background: "var(--accent)", color: "#fff" }}
-              >
-                2
-              </span>
-              <h3 className="text-sm font-semibold tracking-tight" style={{ color: "var(--foreground)" }}>
-                Bước 2: Chọn 1 câu hỏi gợi mở sâu sắc ({selectedCbtState.emoji} {selectedCbtState.label})
-              </h3>
-            </div>
+            <h3 className="text-sm font-semibold tracking-tight" style={{ color: "var(--foreground)" }}>
+              Chọn 1 câu hỏi gợi mở sâu sắc ({selectedCbtState.emoji} {selectedCbtState.label})
+            </h3>
             <button
               type="button"
               onClick={() => onChange({ voiceMoodId: null, voicePromptText: null })}
@@ -1282,7 +1232,7 @@ function PageVoice({
           className="eyebrow text-[10px] mb-4"
           style={{ color: "var(--accent)" }}
         >
-          Ghi âm trực tiếp (chuẩn 16kHz Mono WAV)
+          Ghi âm trực tiếp
         </p>
 
         {/* Banner câu hỏi đang tâm sự */}
