@@ -449,7 +449,7 @@ function PageIntro({
             className="text-[15px] leading-[1.75]"
             style={{ color: "var(--secondary-foreground)" }}
           >
-            Trang này là một góc nhỏ bình yên, nơi tụi mình mong được lắng nghe
+            Trang này là một góc nhỏ, nơi tụi mình mong được lắng nghe
             những câu chuyện thật để hiểu hơn cách con người gửi gắm cảm xúc qua
             từng câu chữ và thanh âm.
           </p>
