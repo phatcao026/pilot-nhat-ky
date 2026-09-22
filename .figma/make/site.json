@@ -1,0 +1,10 @@
+{
+  "description": "This user-friendly web app facilitates data collection for research by allowing users to log entries, upload voice recordings, and access contact information.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

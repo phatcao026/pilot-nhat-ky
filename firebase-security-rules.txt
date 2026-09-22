@@ -1,0 +1,27 @@
+================================================================================
+1. LUẬT BẢO MẬT FIRESTORE (Firestore Security Rules)
+Truy cập: Firebase Console -> Build -> Firestore Database -> tab Rules -> Dán đoạn sau -> Publish
+================================================================================
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /diaries/{document} {
+      // Cho phép mọi người gửi bài ẩn danh
+      allow create: if true;
+
+      // Cho phép trang Admin đọc và xóa bài rác/bài test
+      allow read, delete: if true;
+
+      // Không cho phép sửa đổi dữ liệu gốc
+      allow update: if false;
+    }
+  }
+}
+
+================================================================================
+2. CLOUDINARY UPLOAD PRESET
+Cloudinary Dashboard -> Settings (bánh răng) -> Upload -> Upload Presets
+- Preset Name: uit_diary
+- Mode: Unsigned
+================================================================================
