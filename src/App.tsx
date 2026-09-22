@@ -493,13 +493,12 @@ function PageIntro({
           >
             Chào bạn, tụi mình là một nhóm sinh viên Trường ĐH Công nghệ Thông
             tin ĐHQG-TP.HCM (UIT), đang thực hiện đề tài nghiên cứu khoa học về{" "}
-            <em
-              className="font-display not-italic"
-              style={{ fontStyle: "italic" }}
+            <strong
+              className="text-[16.5px] sm:text-[17px] font-semibold"
+              style={{ color: "var(--foreground)" }}
             >
-              Nhận diện cảm xúc trong nhật ký Tiếng Việt
-            </em>{" "}
-            kết hợp giữa hai phương thức Văn bản và Giọng nói.
+              Nhận diện cảm xúc trong nhật ký Tiếng Việt kết hợp giữa hai phương thức Văn bản và Giọng nói.
+            </strong>
           </p>
           <p
             className="text-[15px] leading-[1.75]"
@@ -515,9 +514,22 @@ function PageIntro({
           >
             Nếu bạn sẵn lòng, hãy sẻ chia cùng tụi mình một điều gì đó hôm nay,
             một niềm vui, một nỗi buồn, hay chỉ là một suy nghĩ thoáng qua. Bạn
-            có thể viết lại hoặc ghi âm trực tiếp giọng nói của mình một cách tự
-            nhiên nhất nhé; dù chỉ vài dòng tâm sự hay một đoạn thu âm ngắn đều
-            vô cùng quý giá với tụi mình.
+            có thể{" "}
+            <strong
+              className="font-semibold"
+              style={{ color: "var(--foreground)" }}
+            >
+              viết lại
+            </strong>{" "}
+            hoặc{" "}
+            <strong
+              className="font-semibold"
+              style={{ color: "var(--foreground)" }}
+            >
+              ghi âm trực tiếp giọng nói
+            </strong>{" "}
+            của mình một cách tự nhiên nhất nhé; dù chỉ vài dòng tâm sự hay một
+            đoạn thu âm ngắn đều vô cùng quý giá với tụi mình.
           </p>
         </div>
 
