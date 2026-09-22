@@ -1850,16 +1850,27 @@ export default function App() {
     return flow[Math.max(i - 1, 0)]
   }
 
-  const [showAdmin, setShowAdmin] = useState<boolean>(() => {
-    return window.location.hash === "#admin" || window.location.pathname === "/admin"
-  })
+  const checkIsAdminUrl = () => {
+    return (
+      window.location.hash === "#admin" ||
+      window.location.pathname === "/admin" ||
+      window.location.pathname === "/admin/" ||
+      new URLSearchParams(window.location.search).has("admin")
+    )
+  }
+
+  const [showAdmin, setShowAdmin] = useState<boolean>(checkIsAdminUrl)
 
   useEffect(() => {
-    const handleHash = () => {
-      setShowAdmin(window.location.hash === "#admin" || window.location.pathname === "/admin")
+    const handleUrlChange = () => {
+      setShowAdmin(checkIsAdminUrl())
     }
-    window.addEventListener("hashchange", handleHash)
-    return () => window.removeEventListener("hashchange", handleHash)
+    window.addEventListener("hashchange", handleUrlChange)
+    window.addEventListener("popstate", handleUrlChange)
+    return () => {
+      window.removeEventListener("hashchange", handleUrlChange)
+      window.removeEventListener("popstate", handleUrlChange)
+    }
   }, [])
 
   if (showAdmin) {
@@ -1867,7 +1878,16 @@ export default function App() {
       <AdminDashboard
         onExit={() => {
           setShowAdmin(false)
-          window.location.hash = ""
+          if (window.location.hash === "#admin") {
+            window.location.hash = ""
+          }
+          if (
+            window.location.pathname === "/admin" ||
+            window.location.pathname === "/admin/" ||
+            new URLSearchParams(window.location.search).has("admin")
+          ) {
+            window.history.pushState({}, "", "/")
+          }
         }}
       />
     )
@@ -1916,7 +1936,7 @@ export default function App() {
       </main>
 
       <footer
-        className="max-w-2xl mx-auto mt-16 pt-6 text-center flex items-center justify-center gap-2"
+        className="max-w-2xl mx-auto mt-16 pt-6 text-center"
         style={{ borderTop: "1px solid var(--border)" }}
       >
         <p
@@ -1925,16 +1945,6 @@ export default function App() {
         >
           Đề tài Nghiên cứu Khoa học · UIT – ĐHQG-HCM
         </p>
-        <button
-          onClick={() => {
-            window.location.hash = "admin"
-            setShowAdmin(true)
-          }}
-          title="Khu vực Quản trị viên UIT"
-          className="opacity-25 hover:opacity-100 transition-opacity text-xs cursor-pointer ml-1"
-        >
-          🔒
-        </button>
       </footer>
     </div>
   )
