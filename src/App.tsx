@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react"
 import uitDiaryLogo from "./imports/Logo_UIT_RutGon_Transparent.png"
 import { submitDiary } from "./lib/diaryService"
+import { WavRecorder, convertUploadedFileToWav16kMono } from "./lib/audioProcessor"
 import AdminDashboard from "./components/AdminDashboard"
 
 type Page = "intro" | "diary" | "voice" | "contact" | "thankyou"
@@ -718,7 +719,8 @@ function VoiceFileItem({
   sizeLabel: string
   onRemove: () => void
 }) {
-  const [url, setUrl] = useState<string>("")
+  const [url, setUrl] = useState<string | null>(null)
+
   useEffect(() => {
     const u = URL.createObjectURL(file)
     setUrl(u)
@@ -734,24 +736,36 @@ function VoiceFileItem({
         <IconWave className="flex-shrink-0" />
         <div className="flex-1 min-w-0">
           <p
-            className="text-[13px] truncate"
+            className="text-[13px] truncate font-medium"
             style={{ color: "var(--foreground)" }}
           >
             {file.name}
           </p>
-          <p
-            className="text-[11px]"
-            style={{ color: "var(--muted-foreground)" }}
-          >
-            {sizeLabel}
-          </p>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span
+              className="text-[11px]"
+              style={{ color: "var(--muted-foreground)" }}
+            >
+              {sizeLabel}
+            </span>
+            <span
+              className="text-[10px] px-1.5 py-0.5 rounded font-mono"
+              style={{
+                background: "var(--secondary)",
+                color: "var(--accent)",
+                border: "1px solid var(--border)",
+              }}
+            >
+              16kHz · Mono · WAV
+            </span>
+          </div>
         </div>
         <button
           onClick={(e) => {
             e.stopPropagation()
             onRemove()
           }}
-          className="text-[12px] px-2 py-1 rounded transition-all hover:opacity-60"
+          className="text-[12px] px-2.5 py-1 rounded transition-all hover:bg-red-50 hover:text-red-600 active:scale-95"
           style={{ color: "var(--muted-foreground)" }}
         >
           Gỡ bỏ
@@ -784,46 +798,22 @@ function PageVoice({
   const [dragging, setDragging] = useState(false)
 
   // ---- Live recording state ----
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
-  const chunksRef = useRef<Blob[]>([])
-  const streamRef = useRef<MediaStream | null>(null)
+  const wavRecorderRef = useRef<WavRecorder | null>(null)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const animFrameRef = useRef<number | null>(null)
   const [recording, setRecording] = useState(false)
   const [paused, setPaused] = useState(false)
   const [elapsed, setElapsed] = useState(0)
+  const [volume, setVolume] = useState(0)
   const [recError, setRecError] = useState<string | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [processStatus, setProcessStatus] = useState("")
 
   const canRecord =
     typeof navigator !== "undefined" &&
     !!navigator.mediaDevices?.getUserMedia &&
     typeof window !== "undefined" &&
-    "MediaRecorder" in window
-
-  const addFiles = (files: FileList | null) => {
-    if (!files) return
-    const audio = Array.from(files).filter(
-      (f) =>
-        f.type.startsWith("audio/") ||
-        /\.(mp3|m4a|wav|ogg|aac|wma|opus)$/i.test(f.name),
-    )
-    onChange({ voiceFiles: [...data.voiceFiles, ...audio] })
-  }
-  const removeFile = (i: number) =>
-    onChange({ voiceFiles: data.voiceFiles.filter((_, idx) => idx !== i) })
-  const fmtSize = (b: number) =>
-    b < 1024 * 1024
-      ? `${(b / 1024).toFixed(0)} KB`
-      : `${(b / 1024 / 1024).toFixed(1)} MB`
-  const fmtTime = (s: number) =>
-    `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`
-  const onDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault()
-      setDragging(false)
-      addFiles(e.dataTransfer.files)
-    },
-    [data.voiceFiles],
-  )
+    (!!window.AudioContext || !!(window as any).webkitAudioContext)
 
   const stopTimer = () => {
     if (timerRef.current) {
@@ -831,94 +821,202 @@ function PageVoice({
       timerRef.current = null
     }
   }
-  const releaseStream = () => {
-    streamRef.current?.getTracks().forEach((t) => t.stop())
-    streamRef.current = null
+
+  const stopVolumeAnim = () => {
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current)
+      animFrameRef.current = null
+    }
+    setVolume(0)
+  }
+
+  const elapsedRef = useRef(elapsed)
+  elapsedRef.current = elapsed
+
+  const stopRecordingInternal = async (seconds: number) => {
+    stopTimer()
+    stopVolumeAnim()
+
+    const recorder = wavRecorderRef.current
+    if (!recorder) {
+      setRecording(false)
+      setPaused(false)
+      return
+    }
+
+    // Min duration check: 15 seconds
+    if (seconds < 15) {
+      recorder.cancel()
+      wavRecorderRef.current = null
+      setRecording(false)
+      setPaused(false)
+      setElapsed(0)
+      setRecError(
+        "Bản ghi âm hơi ngắn (dưới 15 giây). Bạn hãy mở lòng tâm sự thêm một chút (tối thiểu 15 giây) để mô hình nghiên cứu có đủ dữ liệu nhận diện nhé!"
+      )
+      return
+    }
+
+    setIsProcessing(true)
+    setProcessStatus("Đang chuẩn hóa âm thanh về chuẩn 16kHz Mono WAV...")
+    try {
+      const wavFile = await recorder.stop()
+      wavRecorderRef.current = null
+      onChange({ voiceFiles: [...data.voiceFiles, wavFile] })
+    } catch (err: any) {
+      console.error("Lỗi đóng gói WAV:", err)
+      setRecError(
+        "Không thể lưu bản ghi âm: " + (err.message || "Lỗi không xác định")
+      )
+    } finally {
+      setIsProcessing(false)
+      setProcessStatus("")
+      setRecording(false)
+      setPaused(false)
+      setElapsed(0)
+    }
   }
 
   const startRecording = async () => {
     setRecError(null)
     if (!canRecord) {
       setRecError(
-        "Trình duyệt của bạn không hỗ trợ ghi âm trực tiếp. Bạn có thể tải file lên bên dưới nhé.",
+        "Trình duyệt của bạn không hỗ trợ Web Audio API để thu âm. Bạn có thể tải file ghi âm lên bên dưới nhé."
       )
       return
     }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      streamRef.current = stream
-      const mime = [
-        "audio/webm;codecs=opus",
-        "audio/webm",
-        "audio/mp4",
-        "audio/ogg;codecs=opus",
-      ].find((m) => MediaRecorder.isTypeSupported(m))
-      const mr = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined)
-      chunksRef.current = []
-      mr.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data)
-      }
-      mr.onstop = () => {
-        const type = mr.mimeType || "audio/webm"
-        const ext = type.includes("mp4")
-          ? "m4a"
-          : type.includes("ogg")
-            ? "ogg"
-            : "webm"
-        const blob = new Blob(chunksRef.current, { type })
-        const stamp = new Date()
-          .toLocaleTimeString("vi-VN", { hour12: false })
-          .replace(/:/g, "-")
-        const file = new File([blob], `ghi-am-${stamp}.${ext}`, { type })
-        onChange({ voiceFiles: [...data.voiceFiles, file] })
-        releaseStream()
-      }
-      mr.start()
-      mediaRecorderRef.current = mr
+      const recorder = new WavRecorder()
+      await recorder.start()
+      wavRecorderRef.current = recorder
+
       setRecording(true)
       setPaused(false)
       setElapsed(0)
       stopTimer()
-      timerRef.current = setInterval(() => setElapsed((s) => s + 1), 1000)
-    } catch {
-      releaseStream()
+
+      timerRef.current = setInterval(() => {
+        setElapsed((prev) => {
+          const next = prev + 1
+          if (next >= 300) {
+            setTimeout(() => stopRecordingInternal(next), 0)
+          }
+          return next
+        })
+      }, 1000)
+
+      const tickVolume = () => {
+        if (wavRecorderRef.current) {
+          setVolume(wavRecorderRef.current.getVolume())
+          animFrameRef.current = requestAnimationFrame(tickVolume)
+        }
+      }
+      animFrameRef.current = requestAnimationFrame(tickVolume)
+    } catch (err: any) {
+      console.error("Lỗi mở micro:", err)
       setRecError(
-        "Không truy cập được micro. Vui lòng cho phép quyền ghi âm rồi thử lại, hoặc tải file lên bên dưới.",
+        "Không truy cập được micro. Vui lòng cấp quyền micro trong trình duyệt và thử lại, hoặc tải file lên bên dưới."
       )
     }
   }
 
   const stopRecording = () => {
-    mediaRecorderRef.current?.stop()
-    mediaRecorderRef.current = null
-    setRecording(false)
-    setPaused(false)
-    stopTimer()
+    stopRecordingInternal(elapsedRef.current)
   }
 
   const togglePause = () => {
-    const mr = mediaRecorderRef.current
-    if (!mr) return
-    if (mr.state === "recording") {
-      mr.pause()
+    const recorder = wavRecorderRef.current
+    if (!recorder) return
+    if (!paused) {
+      recorder.pause()
       setPaused(true)
       stopTimer()
-    } else if (mr.state === "paused") {
-      mr.resume()
+      setVolume(0)
+    } else {
+      recorder.resume()
       setPaused(false)
-      timerRef.current = setInterval(() => setElapsed((s) => s + 1), 1000)
+      timerRef.current = setInterval(() => {
+        setElapsed((prev) => {
+          const next = prev + 1
+          if (next >= 300) {
+            setTimeout(() => stopRecordingInternal(next), 0)
+          }
+          return next
+        })
+      }, 1000)
     }
   }
+
+  const addFiles = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    const audioList = Array.from(files).filter(
+      (f) =>
+        f.type.startsWith("audio/") ||
+        /\.(mp3|m4a|wav|ogg|aac|wma|opus|flac)$/i.test(f.name)
+    )
+
+    if (audioList.length === 0) {
+      setRecError("Vui lòng chọn file âm thanh hợp lệ (MP3, M4A, WAV, AAC, OGG...).")
+      return
+    }
+
+    setRecError(null)
+    setIsProcessing(true)
+    const convertedFiles: File[] = []
+    const errorMessages: string[] = []
+
+    for (let i = 0; i < audioList.length; i++) {
+      const file = audioList[i]
+      setProcessStatus(`Đang xử lý & chuẩn hóa (${i + 1}/${audioList.length}): ${file.name}...`)
+      try {
+        const { file: wavFile } = await convertUploadedFileToWav16kMono(file)
+        convertedFiles.push(wavFile)
+      } catch (err: any) {
+        errorMessages.push(err.message || `Lỗi xử lý file ${file.name}`)
+      }
+    }
+
+    setIsProcessing(false)
+    setProcessStatus("")
+
+    if (convertedFiles.length > 0) {
+      onChange({ voiceFiles: [...data.voiceFiles, ...convertedFiles] })
+    }
+
+    if (errorMessages.length > 0) {
+      setRecError(errorMessages.join("\n"))
+    }
+  }
+
+  const removeFile = (i: number) =>
+    onChange({ voiceFiles: data.voiceFiles.filter((_, idx) => idx !== i) })
+
+  const fmtSize = (b: number) =>
+    b < 1024 * 1024
+      ? `${(b / 1024).toFixed(0)} KB`
+      : `${(b / 1024 / 1024).toFixed(1)} MB`
+
+  const fmtTime = (s: number) =>
+    `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`
+
+  const onDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault()
+      setDragging(false)
+      addFiles(e.dataTransfer.files)
+    },
+    [data.voiceFiles]
+  )
 
   useEffect(() => {
     return () => {
       stopTimer()
-      if (mediaRecorderRef.current?.state !== "inactive") {
-        try {
-          mediaRecorderRef.current?.stop()
-        } catch {}
+      stopVolumeAnim()
+      if (wavRecorderRef.current) {
+        wavRecorderRef.current.cancel()
+        wavRecorderRef.current = null
       }
-      releaseStream()
     }
   }, [])
 
@@ -929,22 +1027,83 @@ function PageVoice({
         sub="Đôi khi giọng nói mang theo những cảm xúc mà con chữ khó lòng diễn tả hết. Bạn có thể ghi âm trực tiếp ngay tại đây, hoặc tải lên file có sẵn, hoàn toàn tùy bạn."
       />
 
-      {/* ---- Live recorder ---- */}
+      {/* ---- Lời nhắn từ nhóm nghiên cứu ---- */}
       <div
-        className="rounded-2xl p-7 mb-5 text-center"
-        style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+        className="rounded-2xl p-4 sm:p-5 mb-5 text-left border text-xs sm:text-sm leading-relaxed"
+        style={{
+          background: "var(--card)",
+          borderColor: "var(--border)",
+        }}
       >
-        <p
-          className="eyebrow text-[10px] mb-5"
+        <div
+          className="flex items-center gap-2 mb-2 font-medium"
           style={{ color: "var(--accent)" }}
         >
-          Ghi âm trực tiếp
+          <span>🌿</span>
+          <span>Một chút nhắn nhủ từ nhóm nghiên cứu:</span>
+        </div>
+        <p style={{ color: "var(--secondary-foreground)" }}>
+          Để tiếng thở dài, sự ngắt nghỉ và cảm xúc tự nhiên được bảo tồn chân thực nhất cho mô hình AI:
+        </p>
+        <ul
+          className="mt-2 space-y-1.5 list-disc list-inside text-[12px] sm:text-[13px]"
+          style={{ color: "var(--muted-foreground)" }}
+        >
+          <li>
+            Hãy cố gắng ghi âm trong <strong>không gian yên tĩnh</strong> (tránh tiếng tivi, nhạc nền hay người nói xung quanh).
+          </li>
+          <li>
+            Giữ micro cách miệng khoảng <strong>1 gang tay (15 – 30cm)</strong> để giọng nói rõ và không bị vỡ âm.
+          </li>
+          <li>
+            Thời lượng tối ưu từ <strong>1 – 3 phút</strong> (tối thiểu 15 giây, tối đa 5 phút).
+          </li>
+        </ul>
+      </div>
+
+      {/* ---- Live recorder ---- */}
+      <div
+        className="rounded-2xl p-7 mb-5 text-center transition-all"
+        style={{
+          background: "var(--card)",
+          border: elapsed >= 270 && recording
+            ? "1px solid #ea580c"
+            : "1px solid var(--border)",
+        }}
+      >
+        <p
+          className="eyebrow text-[10px] mb-4"
+          style={{ color: "var(--accent)" }}
+        >
+          Ghi âm trực tiếp (chuẩn 16kHz Mono WAV)
         </p>
 
+        {/* Cảnh báo trước khi hết 5 phút (ở mốc 4m30s = 270s) */}
+        {recording && elapsed >= 270 && (
+          <div
+            className="mb-4 px-3.5 py-2 rounded-xl text-xs sm:text-[13px] font-medium animate-pulse inline-flex items-center gap-2"
+            style={{
+              background: "rgba(234, 88, 12, 0.12)",
+              color: "#ea580c",
+              border: "1px solid rgba(234, 88, 12, 0.3)",
+            }}
+          >
+            <span>⚠️</span>
+            <span>
+              Còn {300 - elapsed}s nữa sẽ tự động dừng & lưu bài (tối đa 5 phút)
+            </span>
+          </div>
+        )}
+
         <div
-          className="font-display mb-5 tabular-nums"
+          className="font-display mb-4 tabular-nums transition-colors"
           style={{
-            color: recording ? "var(--foreground)" : "var(--muted-foreground)",
+            color:
+              elapsed >= 270 && recording
+                ? "#ea580c"
+                : recording
+                ? "var(--foreground)"
+                : "var(--muted-foreground)",
             fontSize: "2.5rem",
             lineHeight: 1,
             letterSpacing: "0.02em",
@@ -953,12 +1112,42 @@ function PageVoice({
           {fmtTime(elapsed)}
         </div>
 
+        {/* Audio Wave Visualizer */}
+        {recording && (
+          <div className="flex items-center justify-center gap-1 mb-5 h-6">
+            {[0.3, 0.7, 1.2, 0.6, 1.0, 1.4, 0.8, 0.5, 1.1, 0.4].map((m, idx) => {
+              const barH = Math.max(
+                4,
+                paused ? 4 : Math.min(24, Math.round(4 + volume * m * 0.22))
+              )
+              return (
+                <span
+                  key={idx}
+                  className="w-1 rounded-full transition-all duration-75"
+                  style={{
+                    height: `${barH}px`,
+                    background: paused
+                      ? "var(--muted-foreground)"
+                      : elapsed >= 270
+                      ? "#ea580c"
+                      : "var(--accent)",
+                  }}
+                />
+              )
+            })}
+          </div>
+        )}
+
         {recording && (
           <div className="flex items-center justify-center gap-2 mb-6">
             <span
               className="w-2 h-2 rounded-full"
               style={{
-                background: paused ? "var(--muted-foreground)" : "#c0563a",
+                background: paused
+                  ? "var(--muted-foreground)"
+                  : elapsed >= 270
+                  ? "#ea580c"
+                  : "#c0563a",
                 animation: paused ? "none" : "pulse 1.2s ease-in-out infinite",
               }}
             />
@@ -966,16 +1155,22 @@ function PageVoice({
               className="text-[12px]"
               style={{ color: "var(--muted-foreground)" }}
             >
-              {paused ? "Đang tạm dừng" : "Đang ghi âm…"}
+              {paused
+                ? "Đang tạm dừng"
+                : elapsed >= 270
+                ? "Sắp hết thời gian tối đa…"
+                : "Đang ghi âm chân thực…"}
             </span>
           </div>
         )}
 
+        {/* Action buttons */}
         <div className="flex items-center justify-center gap-3">
           {!recording ? (
             <button
               onClick={startRecording}
-              className="flex items-center gap-2.5 px-7 py-3.5 rounded-full text-sm tracking-wide transition-all duration-200 hover:opacity-90 active:scale-[0.98]"
+              disabled={isProcessing}
+              className="flex items-center gap-2.5 px-7 py-3.5 rounded-full text-sm tracking-wide transition-all duration-200 hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
               style={{
                 background: "var(--primary)",
                 color: "var(--primary-foreground)",
@@ -1011,13 +1206,25 @@ function PageVoice({
           )}
         </div>
 
+        {/* Processing Indicator */}
+        {isProcessing && (
+          <div className="mt-4 flex items-center justify-center gap-2 text-xs" style={{ color: "var(--accent)" }}>
+            <span className="w-2.5 h-2.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
+            <span>{processStatus || "Đang xử lý âm thanh..."}</span>
+          </div>
+        )}
+
         {recError && (
-          <p
-            className="text-[12.5px] mt-5 leading-relaxed max-w-sm mx-auto"
-            style={{ color: "#b0452c" }}
+          <div
+            className="text-[12.5px] mt-5 leading-relaxed max-w-sm mx-auto p-3 rounded-xl whitespace-pre-line"
+            style={{
+              background: "rgba(176, 69, 44, 0.08)",
+              color: "#b0452c",
+              border: "1px solid rgba(176, 69, 44, 0.2)",
+            }}
           >
             {recError}
-          </p>
+          </div>
         )}
       </div>
 
@@ -1040,7 +1247,7 @@ function PageVoice({
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
         onClick={() => inputRef.current?.click()}
-        className="rounded-2xl p-10 text-center cursor-pointer transition-all duration-200"
+        className="rounded-2xl p-8 sm:p-10 text-center cursor-pointer transition-all duration-200"
         style={{
           background: dragging ? "var(--secondary)" : "transparent",
           border: `1.5px dashed ${
@@ -1051,27 +1258,35 @@ function PageVoice({
         <input
           ref={inputRef}
           type="file"
-          accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.wma,.opus"
+          accept="audio/*,.mp3,.m4a,.wav,.ogg,.aac,.wma,.opus,.flac"
           multiple
           className="hidden"
           onChange={(e) => addFiles(e.target.files)}
         />
-        <div className="flex justify-center mb-4">
+        <div className="flex justify-center mb-3">
           <IconMic />
         </div>
         <p
-          className="text-[15px] mb-1.5"
+          className="text-[15px] mb-1.5 font-medium"
           style={{ color: "var(--foreground)" }}
         >
           Kéo thả file vào đây, hoặc nhấn để chọn
         </p>
-        <p className="text-[12px]" style={{ color: "var(--muted-foreground)" }}>
-          MP3 · M4A · WAV · OGG · AAC — tối đa 50 MB mỗi file
+        <p className="text-[12px] leading-relaxed max-w-md mx-auto" style={{ color: "var(--muted-foreground)" }}>
+          Hỗ trợ MP3, M4A, WAV, AAC, OGG — tối đa <strong>20 MB</strong> và thời lượng từ <strong>15s đến 5 phút</strong> (hệ thống tự động chuẩn hóa về WAV 16kHz Mono).
         </p>
       </div>
 
       {data.voiceFiles.length > 0 && (
-        <div className="mt-4 space-y-2">
+        <div className="mt-5 space-y-2.5">
+          <div className="flex items-center justify-between px-1">
+            <span className="eyebrow text-[10px]" style={{ color: "var(--accent)" }}>
+              Danh sách bản ghi ({data.voiceFiles.length})
+            </span>
+            <span className="text-[11px]" style={{ color: "var(--muted-foreground)" }}>
+              Bấm nút nghe lại để kiểm tra trước khi gửi
+            </span>
+          </div>
           {data.voiceFiles.map((file, i) => (
             <VoiceFileItem
               key={i}
@@ -1084,11 +1299,10 @@ function PageVoice({
       )}
 
       <p
-        className="text-[12px] mt-4 italic"
+        className="text-[12px] mt-5 italic"
         style={{ color: "var(--muted-foreground)" }}
       >
-        Bước này hoàn toàn tùy chọn, bạn có thể bỏ qua nếu chỉ muốn chia sẻ
-        bằng con chữ.
+        Bước này hoàn toàn tùy chọn, bạn có thể bấm "Tiếp theo" nếu chỉ muốn chia sẻ bằng văn bản.
       </p>
 
       <NavRow onBack={onBack} onNext={onNext} />
