@@ -493,12 +493,12 @@ function PageIntro({
           >
             Chào bạn, tụi mình là một nhóm sinh viên Trường ĐH Công nghệ Thông
             tin ĐHQG-TP.HCM (UIT), đang thực hiện đề tài nghiên cứu khoa học về{" "}
-            <strong
-              className="text-[16.5px] sm:text-[17px] font-semibold"
+            <em
+              className="font-display italic font-semibold text-[17px] sm:text-[18px]"
               style={{ color: "var(--foreground)" }}
             >
               Nhận diện cảm xúc trong nhật ký Tiếng Việt kết hợp giữa hai phương thức Văn bản và Giọng nói.
-            </strong>
+            </em>
           </p>
           <p
             className="text-[15px] leading-[1.75]"
